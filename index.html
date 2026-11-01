@@ -348,7 +348,7 @@ textarea.input { min-height: 120px; resize: vertical; }
     <div class="sec-head" id="request">
       <span class="label">Requests</span>
       <h2 class="glow">got an idea?</h2>
-      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Every request shows up on the board, and I'll update it as I work on it. One open request per person at a time.</p>
+      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Requests are private, only I see them, and I'll reach out if I build it. One open request per person at a time.</p>
     </div>
 
     <section class="req">
@@ -371,14 +371,14 @@ textarea.input { min-height: 120px; resize: vertical; }
         </div>
         <div class="row2">
           <div class="field">
-            <label for="who">Name on the board</label>
+            <label for="who">Your name</label>
             <input class="input" id="who" name="who" maxlength="40" placeholder="Anonymous">
-            <small>Optional. Everyone can see it.</small>
+            <small>Optional.</small>
           </div>
           <div class="field">
             <label for="contact">How to reach you</label>
             <input class="input" id="contact" name="contact" maxlength="100" placeholder="Discord, TikTok or email">
-            <small>Optional. Only I can see it.</small>
+            <small>Optional, but I can't reply without it.</small>
           </div>
         </div>
         <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
@@ -403,9 +403,7 @@ textarea.input { min-height: 120px; resize: vertical; }
           <span class="label">Owner mode</span>
           <button class="mini-btn" type="button" id="ownerOut">Lock</button>
         </div>
-        <ul class="tickets" id="tickets" aria-live="polite">
-          <li class="empty" id="boardEmpty">Loading requests…</li>
-        </ul>
+        <ul class="tickets" id="tickets" aria-live="polite"></ul>
       </div>
     </section>
 
@@ -473,8 +471,8 @@ textarea.input { min-height: 120px; resize: vertical; }
   else { (function loop(now) { drawWaves(now); drawTrail(now); requestAnimationFrame(loop); })(performance.now()); }
 
   // Requests: saved to the build_requests table in Supabase.
-  // The publishable key is meant to be public; the table's rules only let visitors add requests
-  // and read the board, never contact details, statuses or deletes. The database also enforces
+  // The publishable key is meant to be public; the table's rules only let visitors add requests,
+  // never read, change or delete them. The database also enforces
   // one open request per person and a daily cap. Owner actions go through functions that check the owner code.
   const BASE = "https://lzigsxqthaqzlanvygmm.supabase.co/rest/v1/";
   const API = BASE + "build_requests";
@@ -554,15 +552,16 @@ textarea.input { min-height: 120px; resize: vertical; }
     loadBoard();
   }
   async function loadBoard() {
+    if (!ownerCode) {
+      list.textContent = ""; count.textContent = "";
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = "Requests are private. Only I can see them, and I'll reach out using the contact you leave.";
+      list.appendChild(li); return;
+    }
     try {
-      if (ownerCode) {
-        const out = await rpc("admin_requests", {});
-        if (!out.ok) { lockOwner(OWNER_ERRORS[out.error] || "Owner code didn't work."); return; }
-        render(out.rows); return;
-      }
-      const res = await fetch(API + "?select=id,created_at,kind,idea,name,status&order=created_at.desc&limit=100", { headers });
-      if (!res.ok) throw new Error(res.status);
-      render(await res.json());
+      const out = await rpc("admin_requests", {});
+      if (!out.ok) { lockOwner(OWNER_ERRORS[out.error] || "Owner code didn't work."); return; }
+      render(out.rows);
     } catch (e) {
       list.textContent = "";
       const li = document.createElement("li"); li.className = "empty";
@@ -626,7 +625,7 @@ textarea.input { min-height: 120px; resize: vertical; }
         throw new Error(LIMITS[info.message] ? info.message : res.status);
       }
       form.reset(); ideaCount.textContent = "At least 10 characters · 0 / 1000";
-      msg.textContent = "Sent. It's on the board now.";
+      msg.textContent = "Sent. I'll take a look.";
       loadBoard();
     } catch (err) {
       msg.className = "msg err"; msg.textContent = LIMITS[err.message] || "That didn't send. Check your connection and try again.";
