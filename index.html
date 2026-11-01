@@ -158,7 +158,19 @@ textarea.input { min-height: 120px; resize: vertical; }
 .status.looking { color: #fff; border-color: rgba(255,255,255,.5); }
 .status.building { color: #000; background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.5); }
 .status.done { color: #000; background: #b8f5c8; border-color: #b8f5c8; }
+.status.declined { color: #ff9b9b; border-color: rgba(255,155,155,.5); }
 .empty { color: var(--muted); font-size: 14px; padding: 18px 4px; }
+.mini-btn { font: 700 12px/1 var(--round); color: var(--ink); background: rgba(0,0,0,.5); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.mini-btn:hover { border-color: var(--ink); }
+.mini-btn.danger { color: #ff9b9b; border-color: rgba(255,155,155,.45); }
+.owner-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 14px; }
+.owner-form[hidden] { display: none; }
+.owner-form .input { flex: 1 1 180px; padding: 9px 12px; border-radius: 10px; }
+.owner-form .msg { flex-basis: 100%; }
+.tk-owner { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
+.tk-owner .contact { flex: 1 1 100%; color: #dcdcdc; font-size: 13px; overflow-wrap: anywhere; }
+.tk-owner select { font: 600 12px/1 var(--round); color: var(--ink); background: #000; border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; }
+.owner-link { background: none; border: 0; padding: 0; font: inherit; color: var(--faint); cursor: pointer; text-decoration: underline; }
 
 /* Ending */
 .end { display: grid; justify-items: center; text-align: center; gap: 16px; padding-block: 80px 40px; }
@@ -336,7 +348,7 @@ textarea.input { min-height: 120px; resize: vertical; }
     <div class="sec-head" id="request">
       <span class="label">Requests</span>
       <h2 class="glow">got an idea?</h2>
-      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Every request shows up on the board, and I'll update it as I work on it.</p>
+      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Every request shows up on the board, and I'll update it as I work on it. One open request per person at a time.</p>
     </div>
 
     <section class="req">
@@ -381,6 +393,16 @@ textarea.input { min-height: 120px; resize: vertical; }
           <h3 class="glow">Request board</h3>
           <span class="label" id="boardCount"></span>
         </div>
+        <form class="owner-form" id="ownerForm" hidden>
+          <input class="input" type="password" id="ownerCode" placeholder="Owner code" autocomplete="current-password" aria-label="Owner code">
+          <button class="mini-btn" type="submit">Unlock</button>
+          <button class="mini-btn" type="button" id="ownerCancel">Cancel</button>
+          <span class="msg" id="ownerMsg" role="status" aria-live="polite"></span>
+        </form>
+        <div class="owner-form" id="ownerBar" hidden>
+          <span class="label">Owner mode</span>
+          <button class="mini-btn" type="button" id="ownerOut">Lock</button>
+        </div>
         <ul class="tickets" id="tickets" aria-live="polite">
           <li class="empty" id="boardEmpty">Loading requests…</li>
         </ul>
@@ -393,7 +415,7 @@ textarea.input { min-height: 120px; resize: vertical; }
     </section>
 
     <footer class="foot">
-      <span>@lmg · vibe coded</span>
+      <span>@lmg · vibe coded · <button class="owner-link" type="button" id="ownerOpen">owner</button></span>
       <a href="https://github.com/THATLMG" target="_blank" rel="noopener">github.com/THATLMG</a>
     </footer>
   </div>
@@ -452,13 +474,33 @@ textarea.input { min-height: 120px; resize: vertical; }
 
   // Requests: saved to the build_requests table in Supabase.
   // The publishable key is meant to be public; the table's rules only let visitors add requests
-  // and read the board, never contact details, statuses or deletes.
-  const API = "https://lzigsxqthaqzlanvygmm.supabase.co/rest/v1/build_requests";
+  // and read the board, never contact details, statuses or deletes. The database also enforces
+  // one open request per person and a daily cap. Owner actions go through functions that check the owner code.
+  const BASE = "https://lzigsxqthaqzlanvygmm.supabase.co/rest/v1/";
+  const API = BASE + "build_requests";
   const KEY = "sb_publishable_6vUOyKqJceEClfugBL2aWA_HjELExo0";
   const headers = { apikey: KEY, Authorization: "Bearer " + KEY };
   const KINDS = { app: "App", website: "Website", tool: "Tool", game: "Game", other: "Other" };
-  const STATUS = { new: "New", looking: "Looking at it", building: "Building", done: "Done" };
+  const STATUS = { new: "New", looking: "Looking at it", building: "Building", done: "Done", declined: "Declined" };
+  const LIMITS = {
+    open_ticket: "You already have an open request. You can send another once it's done.",
+    daily_limit: "That's 3 requests today, the daily max. Try again tomorrow.",
+    busy: "Lots of requests right now. Try again in a bit."
+  };
+  const OWNER_ERRORS = {
+    wrong_code: "Wrong code.",
+    locked: "Too many wrong tries. Wait 15 minutes.",
+    no_code: "No owner code is set yet. Set one in Supabase first."
+  };
   const list = document.getElementById("tickets"), count = document.getElementById("boardCount");
+  let ownerCode = null;
+  try { ownerCode = sessionStorage.getItem("ownerCode"); } catch (e) {}
+
+  async function rpc(name, args) {
+    const res = await fetch(BASE + "rpc/" + name, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ p_code: ownerCode, ...args }) });
+    if (!res.ok) throw new Error(res.status);
+    return res.json();
+  }
 
   function ago(iso) {
     const s = (Date.now() - new Date(iso)) / 1000;
@@ -485,11 +527,39 @@ textarea.input { min-height: 120px; resize: vertical; }
       top.append(kind, st);
       const p = document.createElement("p"); p.textContent = r.idea;
       const by = document.createElement("span"); by.className = "by"; by.textContent = (r.name || "Anonymous") + " · " + ago(r.created_at);
-      li.append(top, p, by); list.appendChild(li);
+      li.append(top, p, by);
+      if (ownerCode) li.appendChild(ownerControls(r));
+      list.appendChild(li);
     }
+  }
+  function ownerControls(r) {
+    const box = document.createElement("div"); box.className = "tk-owner";
+    const contact = document.createElement("span"); contact.className = "contact";
+    contact.textContent = "Contact: " + (r.contact || "none given");
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "Status");
+    for (const k in STATUS) { const o = document.createElement("option"); o.value = k; o.textContent = STATUS[k]; o.selected = k === r.status; sel.appendChild(o); }
+    sel.addEventListener("change", () => ownerAction("admin_set_status", { p_id: r.id, p_status: sel.value }));
+    const del = document.createElement("button"); del.type = "button"; del.className = "mini-btn danger"; del.textContent = "Delete";
+    del.addEventListener("click", () => {
+      if (confirm("Delete this request for good?")) ownerAction("admin_delete_request", { p_id: r.id });
+    });
+    box.append(contact, sel, del);
+    return box;
+  }
+  async function ownerAction(name, args) {
+    try {
+      const out = await rpc(name, args);
+      if (!out.ok) { lockOwner(OWNER_ERRORS[out.error] || "Owner code didn't work."); return; }
+    } catch (e) { alert("That didn't go through. Try again."); }
+    loadBoard();
   }
   async function loadBoard() {
     try {
+      if (ownerCode) {
+        const out = await rpc("admin_requests", {});
+        if (!out.ok) { lockOwner(OWNER_ERRORS[out.error] || "Owner code didn't work."); return; }
+        render(out.rows); return;
+      }
       const res = await fetch(API + "?select=id,created_at,kind,idea,name,status&order=created_at.desc&limit=100", { headers });
       if (!res.ok) throw new Error(res.status);
       render(await res.json());
@@ -500,6 +570,37 @@ textarea.input { min-height: 120px; resize: vertical; }
       list.appendChild(li);
     }
   }
+  // Owner mode: unlock with the owner code to see contacts, change statuses and delete
+  const ownerForm = document.getElementById("ownerForm"), ownerBar = document.getElementById("ownerBar"),
+        ownerInput = document.getElementById("ownerCode"), ownerMsg = document.getElementById("ownerMsg");
+  function showOwner() { ownerForm.hidden = true; ownerBar.hidden = !ownerCode; }
+  function lockOwner(reason) {
+    ownerCode = null;
+    try { sessionStorage.removeItem("ownerCode"); } catch (e) {}
+    showOwner();
+    if (reason) { ownerForm.hidden = false; ownerMsg.className = "msg err"; ownerMsg.textContent = reason; }
+    loadBoard();
+  }
+  document.getElementById("ownerOpen").addEventListener("click", () => {
+    if (ownerCode) return;
+    ownerForm.hidden = false; ownerMsg.textContent = "";
+    document.getElementById("request").scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
+    ownerInput.focus({ preventScroll: true });
+  });
+  document.getElementById("ownerCancel").addEventListener("click", () => { ownerForm.hidden = true; });
+  document.getElementById("ownerOut").addEventListener("click", () => lockOwner());
+  ownerForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    ownerCode = ownerInput.value;
+    ownerMsg.className = "msg"; ownerMsg.textContent = "Checking…";
+    try {
+      const out = await rpc("admin_requests", {});
+      if (!out.ok) { lockOwner(OWNER_ERRORS[out.error] || "Owner code didn't work."); return; }
+      try { sessionStorage.setItem("ownerCode", ownerCode); } catch (e) {}
+      ownerInput.value = ""; showOwner(); render(out.rows);
+    } catch (err) { ownerCode = null; ownerMsg.className = "msg err"; ownerMsg.textContent = "Couldn't reach the server. Try again."; }
+  });
+  showOwner();
   loadBoard();
 
   const form = document.getElementById("reqForm"), idea = document.getElementById("idea"), msg = document.getElementById("msg"),
@@ -520,12 +621,15 @@ textarea.input { min-height: 120px; resize: vertical; }
     btn.disabled = true; btn.textContent = "Sending…";
     try {
       const res = await fetch(API, { method: "POST", headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error(res.status);
+      if (!res.ok) {
+        const info = await res.json().catch(() => ({}));
+        throw new Error(LIMITS[info.message] ? info.message : res.status);
+      }
       form.reset(); ideaCount.textContent = "At least 10 characters · 0 / 1000";
       msg.textContent = "Sent. It's on the board now.";
       loadBoard();
     } catch (err) {
-      msg.className = "msg err"; msg.textContent = "That didn't send. Check your connection and try again.";
+      msg.className = "msg err"; msg.textContent = LIMITS[err.message] || "That didn't send. Check your connection and try again.";
     } finally {
       btn.disabled = false; btn.textContent = "Send request";
     }
