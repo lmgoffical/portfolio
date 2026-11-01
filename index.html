@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Apps and websites by @lmg, vibe coded and free. Send a request for something you want built.">
+</head>
+<body>
+<title>LMG Builds</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: matches noiz.bio/lmg as it is now. Pure black, light rays from the top, drifting line waves,
+   a ghost cursor trail, Comfortaa everywhere, soft white glow, and projects hung on a spine timeline.
+   Single dark theme on purpose. */
+:root {
+  --bg: #000000;
+  --ink: #ffffff;
+  --muted: #9b9b9b;
+  --faint: #5c5c5c;
+  --card: rgba(14, 14, 14, .72);
+  --line: rgba(255, 255, 255, .12);
+  --line-2: rgba(255, 255, 255, .28);
+  --glow: 0 0 8px rgba(255,255,255,.55), 0 0 22px rgba(255,255,255,.25);
+  --glow-box: 0 0 14px rgba(255,255,255,.35), 0 0 34px rgba(255,255,255,.12);
+  --round: "Comfortaa", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.65 var(--round); }
+.pad { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1020px; margin: 0 auto; }
+a { color: inherit; }
+img { display: block; height: auto; max-width: 100%; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 10px; }
+
+/* Backdrop: light rays from the top edge, line waves, ghost trail */
+.rays { position: fixed; inset: 0; z-index: -3; pointer-events: none; overflow: hidden; background: var(--bg); }
+.rays::before { content: ""; position: absolute; left: 50%; top: -30vh; width: 160vmax; height: 160vmax; transform: translateX(-50%);
+  background: repeating-conic-gradient(from 180deg at 50% 0%, rgba(255,255,255,.07) 0deg 2.2deg, transparent 2.2deg 7deg);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 55%); mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 55%);
+  animation: sway 14s ease-in-out infinite alternate; }
+.rays::after { content: ""; position: absolute; left: 50%; top: -40vh; width: 120vw; height: 90vh; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(255,255,255,.10), transparent); }
+@keyframes sway { from { transform: translateX(-50%) rotate(-4deg); } to { transform: translateX(-50%) rotate(4deg); } }
+#waves, #trail { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#waves { z-index: -2; }
+#trail { z-index: 50; }
+
+/* Glow helpers */
+.glow { text-shadow: var(--glow); }
+.label { font: 700 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 14px; font: 700 15px/1 var(--round); text-decoration: none; color: var(--ink);
+  background: rgba(10,10,10,.85); border: 1px solid var(--line-2); box-shadow: var(--glow-box); text-shadow: 0 0 8px rgba(255,255,255,.5); transition: transform .15s, box-shadow .2s; animation: pulse 3s ease-in-out infinite; }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 0 18px rgba(255,255,255,.55), 0 0 44px rgba(255,255,255,.2); }
+.btn-solid { background: var(--ink); color: #000; text-shadow: none; }
+.btn svg { width: 16px; height: 16px; }
+@keyframes pulse { 50% { box-shadow: 0 0 8px rgba(255,255,255,.2), 0 0 20px rgba(255,255,255,.06); } }
+
+/* Header */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 22px; flex-wrap: wrap; }
+.handle { font: 700 20px/1 var(--round); text-decoration: none; }
+.top nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; height: 38px; padding: 0 15px; border-radius: 999px; border: 1px solid var(--line-2); font: 600 13px/1 var(--round); text-decoration: none; background: rgba(0,0,0,.4); transition: box-shadow .2s; }
+.chip:hover { box-shadow: var(--glow-box); }
+
+/* Hero: centered like the Noiz card */
+.hero { display: grid; justify-items: center; text-align: center; gap: 18px; padding-block: 56px 40px; }
+.hero h1 { font: 700 clamp(48px, 9vw, 96px)/1 var(--round); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.hero .sub { font: 600 16px/1 var(--round); color: #d9d9d9; }
+.hero .lede { max-width: 46ch; color: #bdbdbd; margin: 6px 0 8px; }
+.hero .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.meta { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; color: var(--faint); font: 600 12px/1 var(--round); margin-top: 6px; }
+
+/* Spine timeline of projects */
+.sec-head { display: grid; gap: 10px; padding-block: 40px 28px; }
+.sec-head h2 { font: 700 clamp(36px, 6vw, 56px)/1 var(--round); margin: 0; letter-spacing: -.01em; }
+.spine { position: relative; display: grid; gap: 40px; padding-left: 44px; padding-bottom: 20px; }
+.spine::before { content: ""; position: absolute; left: 11px; top: 10px; bottom: 30px; width: 2px; background: var(--ink); box-shadow: var(--glow-box); opacity: .9; }
+.item { position: relative; display: grid; gap: 12px; }
+.item::before { content: ""; position: absolute; left: -44px; top: 2px; width: 24px; height: 24px; border-radius: 50%; background: #000; border: 2px solid var(--ink); box-shadow: var(--glow-box); }
+.item::after { content: ""; position: absolute; left: -37px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.item > .label { line-height: 28px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; display: grid; grid-template-columns: 1fr 1.15fr;
+  transform-style: preserve-3d; transition: transform .25s ease-out, box-shadow .25s; will-change: transform; }
+.card:hover { box-shadow: 0 0 30px rgba(255,255,255,.08); }
+.card > * { min-width: 0; }
+.info { padding: 30px; display: grid; gap: 14px; align-content: center; }
+.info h3 { font: 700 clamp(26px, 3.4vw, 34px)/1.1 var(--round); margin: 0; }
+.info p { margin: 0; color: #c7c7c7; font-size: 15px; }
+.specs { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-block: 14px; border-block: 1px solid var(--line); }
+.specs div { display: grid; gap: 6px; }
+.specs dd { margin: 0; font: 700 17px/1.2 var(--round); }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tags li { font: 600 12px/1 var(--round); padding: 8px 11px; border-radius: 999px; border: 1px solid var(--line); color: #dedede; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; }
+.links .btn { min-height: 44px; padding: 10px 18px; font-size: 14px; }
+
+.media { position: relative; padding: 30px 30px 0; display: grid; align-items: end; }
+.shot { position: relative; border-radius: 14px 14px 0 0; overflow: hidden; border: 1px solid var(--line-2); border-bottom: 0; background: #0b0b0b; box-shadow: 0 0 30px rgba(255,255,255,.06); }
+.chrome { display: flex; gap: 6px; padding: 9px 12px; background: #121212; border-bottom: 1px solid var(--line); }
+.chrome b { width: 9px; height: 9px; border-radius: 50%; background: #3a3a3a; }
+.inset { position: absolute; width: 46%; right: 18px; top: 18px; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: 0 20px 40px -16px #000, 0 0 18px rgba(255,255,255,.08); }
+.bubble { position: absolute; width: 44%; left: 14px; bottom: 22px; filter: drop-shadow(0 18px 26px rgba(0,0,0,.85)); }
+
+.mini { grid-template-columns: 1fr 1fr; }
+.mini .media { padding: 30px; align-items: center; }
+.app { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(0,0,0,.6); font-size: 14px; }
+.app-bar { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.feed div { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); align-items: center; }
+.feed div:last-child { border-bottom: 0; }
+.feed em { font: 700 10px/1 var(--mono); letter-spacing: .1em; font-style: normal; text-transform: uppercase; color: var(--muted); padding: 5px 7px; border: 1px solid var(--line-2); border-radius: 6px; justify-self: start; }
+.disk { display: grid; gap: 12px; padding: 16px 14px 10px; font: 500 12px/1 var(--mono); }
+.disk div { display: grid; grid-template-columns: 90px 1fr 62px; gap: 12px; align-items: center; }
+.disk i { display: block; height: 7px; border-radius: 4px; background: var(--ink); box-shadow: 0 0 10px rgba(255,255,255,.5); }
+.disk span:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.disk-note { padding: 0 14px 14px; }
+.pair { display: contents; }
+
+/* Requests */
+.req { display: grid; grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start; padding-bottom: 10px; }
+.req > * { min-width: 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; gap: 16px; }
+.panel h3 { font: 700 22px/1.2 var(--round); margin: 0; }
+.panel .hint { margin: 0; color: var(--muted); font-size: 14px; }
+.field { display: grid; gap: 8px; }
+.field label { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.field small { color: var(--faint); font-size: 12px; }
+.kinds { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; }
+.kinds label { cursor: pointer; }
+.kinds input { position: absolute; opacity: 0; pointer-events: none; }
+fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
+.kinds span { text-transform: none; letter-spacing: 0; display: inline-block; font: 600 13px/1 var(--round); padding: 9px 13px; border-radius: 999px; border: 1px solid var(--line-2); color: #dcdcdc; transition: box-shadow .2s, background .2s; }
+.kinds input:checked + span { background: var(--ink); color: #000; box-shadow: var(--glow-box); }
+.kinds input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
+.input { width: 100%; font: 500 15px/1.5 var(--round); color: var(--ink); background: rgba(0,0,0,.55); border: 1px solid var(--line-2); border-radius: 14px; padding: 12px 14px; }
+.input:focus { outline: none; border-color: var(--ink); box-shadow: var(--glow-box); }
+textarea.input { min-height: 120px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row2 > * { min-width: 0; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.send { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.send .btn { cursor: pointer; }
+.send .btn[disabled] { opacity: .5; cursor: default; animation: none; }
+.msg { font-size: 14px; color: #dcdcdc; }
+.msg.err { color: #ff9b9b; }
+.board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tickets { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; max-height: 560px; overflow-y: auto; }
+.ticket { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; background: rgba(0,0,0,.45); }
+.ticket-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ticket p { margin: 0; color: #e4e4e4; font-size: 14px; overflow-wrap: anywhere; }
+.ticket .by { color: var(--faint); font-size: 12px; }
+.status { font: 700 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--muted); }
+.status.looking { color: #fff; border-color: rgba(255,255,255,.5); }
+.status.building { color: #000; background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.5); }
+.status.done { color: #000; background: #b8f5c8; border-color: #b8f5c8; }
+.empty { color: var(--muted); font-size: 14px; padding: 18px 4px; }
+
+/* Ending */
+.end { display: grid; justify-items: center; text-align: center; gap: 16px; padding-block: 80px 40px; }
+.end h2 { font: 700 clamp(40px, 7vw, 72px)/1 var(--round); margin: 0; }
+.end p { margin: 0; color: #bdbdbd; max-width: 44ch; }
+.foot { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-block: 24px 40px; color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); }
+.foot a { color: var(--muted); }
+
+@media (max-width: 860px) {
+  .card { grid-template-columns: 1fr; }
+  .info { padding: 24px 20px; }
+  .media { padding: 0 20px; }
+  .mini .media { padding: 0 20px 20px; }
+  .req { grid-template-columns: 1fr; }
+  .panel { padding: 22px 18px; }
+  .spine { padding-left: 38px; }
+  .item::before { left: -38px; }
+  .item::after { left: -31px; }
+}
+@media (max-width: 460px) {
+  .specs dd { font-size: 15px; }
+  .row2 { grid-template-columns: 1fr; }
+  .inset { width: 54%; right: 8px; top: 8px; }
+  .feed div { grid-template-columns: 74px 1fr; }
+  .disk div { grid-template-columns: 74px 1fr 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rays::before, .btn { animation: none; }
+  .card, .btn { transition: none; }
+}
+</style>
+
+<div class="rays" aria-hidden="true"></div>
+<canvas id="waves" aria-hidden="true"></canvas>
+<canvas id="trail" aria-hidden="true"></canvas>
+
+<div class="pad">
+  <div class="wrap">
+    <header class="top">
+      <a class="handle glow" href="#top">@lmg</a>
+      <nav aria-label="Links">
+        <a class="chip" href="#work">Projects</a>
+        <a class="chip" href="#request">Request</a>
+        <a class="chip" href="https://github.com/THATLMG" target="_blank" rel="noopener">GitHub</a>
+        <a class="chip" href="https://noiz.bio/lmg" target="_blank" rel="noopener">noiz.bio/lmg</a>
+      </nav>
+    </header>
+
+    <section class="hero" id="top">
+      <span class="label">Apps &amp; websites · vibe coded</span>
+      <h1 class="glow">stuff i make vibe coding</h1>
+      <span class="sub glow">@lmg</span>
+      <p class="lede">Windows apps and websites, for anyone. You bring the idea or I come up with one, I vibe code it, and it ships free.</p>
+      <div class="cta">
+        <a class="btn" href="#work">See my projects
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v10M3 8l5 5 5-5"/></svg></a>
+        <a class="btn" href="https://github.com/THATLMG" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <div class="meta"><span>4 projects</span><span>·</span><span>all free</span><span>·</span><span>Windows + web</span></div>
+    </section>
+
+    <div class="sec-head" id="work">
+      <span class="label">Projects</span>
+      <h2 class="glow">the work</h2>
+    </div>
+
+    <div class="spine">
+      <!-- Aim Trainer -->
+      <div class="item">
+        <span class="label">No. 01 · Windows app + website</span>
+        <article class="card" data-tilt>
+          <div class="info">
+            <h3 class="glow">LMG's Aim Trainer</h3>
+            <p>An aim trainer that moves exactly like your game. Put in your Valorant, CS2 or Fortnite sens and every flick feels the same as in-game. A sens coach watches how you aim and tells you what to change.</p>
+            <dl class="specs">
+              <div><dt class="label">Games</dt><dd>7</dd></div>
+              <div><dt class="label">Modes</dt><dd>6</dd></div>
+              <div><dt class="label">Size</dt><dd>61 KB</dd></div>
+            </dl>
+            <ul class="tags"><li>Sens coach</li><li>Leaderboard</li><li>Live lyrics</li><li>Auto-updates</li><li>Play in browser</li></ul>
+            <div class="links">
+              <a class="btn btn-solid" href="https://thatlmg.github.io/aim-trainer/" target="_blank" rel="noopener">Visit the site</a>
+              <a class="btn" href="https://thatlmg.github.io/aim-trainer/play.html" target="_blank" rel="noopener">Play in browser</a>
+            </div>
+          </div>
+          <div class="media">
+            <div class="shot">
+              <div class="chrome"><b></b><b></b><b></b></div>
+              <img src="img/aim-home.jpg" alt="LMG's Aim Trainer website: Aim like it counts" width="1440" height="900" loading="lazy">
+            </div>
+            <img class="inset" src="img/aim-board.jpg" alt="The Aim Trainer leaderboard with filters for game, mode and difficulty" width="1440" height="900" loading="lazy">
+          </div>
+        </article>
+      </div>
+
+      <!-- Lyrics Player -->
+      <div class="item">
+        <span class="label">No. 02 · Windows app + website</span>
+        <article class="card" data-tilt>
+          <div class="info">
+            <h3 class="glow">Lyrics Player</h3>
+            <p>Synced Spotify lyrics in a small bubble that floats on top of CS2, Roblox, Valorant and everything else. Each line lights up the moment it's sung, and hotkeys work while you're in game.</p>
+            <dl class="specs">
+              <div><dt class="label">Size</dt><dd>28 MB</dd></div>
+              <div><dt class="label">Install</dt><dd>None</dd></div>
+              <div><dt class="label">Windows</dt><dd>10 &amp; 11</dd></div>
+            </dl>
+            <ul class="tags"><li>Floating bubble</li><li>Click-through</li><li>Fullscreen lyrics</li><li>Themes</li><li>Spotify search</li></ul>
+            <div class="links">
+              <a class="btn btn-solid" href="https://thatlmg.github.io/lyrics-player/" target="_blank" rel="noopener">Visit the site</a>
+              <a class="btn" href="https://github.com/THATLMG/lyrics-player" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </div>
+          <div class="media">
+            <div class="shot">
+              <div class="chrome"><b></b><b></b><b></b></div>
+              <img src="img/lyrics-home.jpg" alt="Lyrics Player website: Lyrics over every game" width="1440" height="900" loading="lazy">
+            </div>
+            <img class="bubble" src="img/bubble.webp" alt="The floating lyrics bubble that sits over games" width="480" height="200" loading="lazy">
+          </div>
+        </article>
+      </div>
+
+      <!-- Heads Up + Space Finder -->
+      <div class="pair">
+        <div class="item">
+          <span class="label">No. 03 · Windows app</span>
+          <article class="card mini" data-tilt>
+            <div class="info">
+              <h3 class="glow">Heads Up</h3>
+              <p>Your news in one window: top and local news, weather, CS2 patch notes and esports, AI news, and the topics you follow. It updates itself.</p>
+              <ul class="tags"><li>Node.js</li><li>Self-updating</li><li>Announcements</li></ul>
+              <div class="links"><a class="btn" href="https://github.com/THATLMG/heads-up" target="_blank" rel="noopener">Get it on GitHub</a></div>
+            </div>
+            <div class="media">
+              <div class="app" aria-hidden="true">
+                <div class="app-bar"><span class="label">Heads Up</span><span class="label">● Live</span></div>
+                <div class="feed">
+                  <div><em>CS2</em><span>Patch notes</span></div>
+                  <div><em>Esports</em><span>Today's matches</span></div>
+                  <div><em>Weather</em><span>Your forecast</span></div>
+                  <div><em>AI</em><span>Claude and AI news</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="item">
+          <span class="label">No. 04 · Coming soon</span>
+          <article class="card mini" data-tilt>
+            <div class="info">
+              <h3 class="glow">Space Finder</h3>
+              <p>Shows which folders and files are eating your drive, so you know what to clear before the next game update. It only reads, so it never deletes anything.</p>
+              <ul class="tags"><li>C#</li><li>Read-only</li><li>Fast on big drives</li></ul>
+            </div>
+            <div class="media">
+              <div class="app" aria-hidden="true">
+                <div class="app-bar"><span class="label">Space Finder</span><span class="label">C:\</span></div>
+                <div class="disk">
+                  <div><span>Steam</span><i style="width:94%"></i><span>412 GB</span></div>
+                  <div><span>Downloads</span><i style="width:40%"></i><span>96 GB</span></div>
+                  <div><span>Videos</span><i style="width:26%"></i><span>61 GB</span></div>
+                  <div><span>AppData</span><i style="width:15%"></i><span>33 GB</span></div>
+                </div>
+                <div class="disk-note label">Example drive</div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head" id="request">
+      <span class="label">Requests</span>
+      <h2 class="glow">got an idea?</h2>
+      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Every request shows up on the board, and I'll update it as I work on it.</p>
+    </div>
+
+    <section class="req">
+      <form class="panel" id="reqForm" novalidate>
+        <h3 class="glow">Send a request</h3>
+        <fieldset class="field">
+          <label id="kindLabel">What is it?</label>
+          <div class="kinds" role="radiogroup" aria-labelledby="kindLabel">
+            <label><input type="radio" name="kind" value="app" id="k-app" checked><span>App</span></label>
+            <label><input type="radio" name="kind" value="website" id="k-website"><span>Website</span></label>
+            <label><input type="radio" name="kind" value="tool" id="k-tool"><span>Tool</span></label>
+            <label><input type="radio" name="kind" value="game" id="k-game"><span>Game</span></label>
+            <label><input type="radio" name="kind" value="other" id="k-other"><span>Other</span></label>
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="idea">Your idea</label>
+          <textarea class="input" id="idea" name="idea" maxlength="1000" placeholder="A website for my small business, an app that tracks my workouts…" required></textarea>
+          <small id="ideaCount">At least 10 characters · 0 / 1000</small>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="who">Name on the board</label>
+            <input class="input" id="who" name="who" maxlength="40" placeholder="Anonymous">
+            <small>Optional. Everyone can see it.</small>
+          </div>
+          <div class="field">
+            <label for="contact">How to reach you</label>
+            <input class="input" id="contact" name="contact" maxlength="100" placeholder="Discord, TikTok or email">
+            <small>Optional. Only I can see it.</small>
+          </div>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+        <div class="send">
+          <button class="btn btn-solid" type="submit" id="sendBtn">Send request</button>
+          <span class="msg" id="msg" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+
+      <div class="panel">
+        <div class="board-head">
+          <h3 class="glow">Request board</h3>
+          <span class="label" id="boardCount"></span>
+        </div>
+        <ul class="tickets" id="tickets" aria-live="polite">
+          <li class="empty" id="boardEmpty">Loading requests…</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="end">
+      <p>Or hit me up on Discord or TikTok. Everything is on my page.</p>
+      <a class="btn" href="https://noiz.bio/lmg" target="_blank" rel="noopener">noiz.bio/lmg</a>
+    </section>
+
+    <footer class="foot">
+      <span>@lmg · vibe coded</span>
+      <a href="https://github.com/THATLMG" target="_blank" rel="noopener">github.com/THATLMG</a>
+    </footer>
+  </div>
+</div>
+
+<script>
+(function () {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fine = matchMedia("(pointer: fine)").matches;
+
+  // Line waves: a few thin white lines drifting across the page, like the Noiz overlay
+  const wc = document.getElementById("waves"), wx = wc.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+  const lines = Array.from({ length: 7 }, (_, i) => ({
+    y: (i + 0.5) / 7, amp: 30 + Math.random() * 50, len: 0.6 + Math.random() * 0.9,
+    speed: 0.00008 + Math.random() * 0.00012, phase: Math.random() * 6.28, tilt: (Math.random() - 0.5) * 0.25,
+    alpha: 0.10 + Math.random() * 0.16
+  }));
+  function size() {
+    dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+    for (const c of [wc, tc]) { c.width = W * dpr; c.height = H * dpr; c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0); }
+  }
+  function drawWaves(t) {
+    wx.clearRect(0, 0, W, H);
+    wx.lineWidth = 1;
+    for (const l of lines) {
+      wx.strokeStyle = `rgba(255,255,255,${l.alpha})`;
+      wx.beginPath();
+      for (let x = -20; x <= W + 20; x += 12) {
+        const k = x / W;
+        const y = l.y * H + Math.sin(k * 6.28 * l.len + l.phase + t * l.speed * 6.28) * l.amp + (k - 0.5) * l.tilt * H;
+        x === -20 ? wx.moveTo(x, y) : wx.lineTo(x, y);
+      }
+      wx.stroke();
+    }
+  }
+
+  // Ghost trail: a soft white streak behind the pointer on computers
+  const tc = document.getElementById("trail"), tx = tc.getContext("2d");
+  const pts = [];
+  if (fine && !reduce) addEventListener("pointermove", e => { pts.push({ x: e.clientX, y: e.clientY, t: performance.now() }); });
+  function drawTrail(now) {
+    tx.clearRect(0, 0, W, H);
+    while (pts.length && now - pts[0].t > 260) pts.shift();
+    for (let i = 1; i < pts.length; i++) {
+      const a = 1 - (now - pts[i].t) / 260;
+      tx.strokeStyle = `rgba(255,255,255,${a * 0.55})`; tx.lineWidth = 1 + a * 3; tx.lineCap = "round";
+      tx.shadowColor = "rgba(255,255,255,.8)"; tx.shadowBlur = 10 * a;
+      tx.beginPath(); tx.moveTo(pts[i - 1].x, pts[i - 1].y); tx.lineTo(pts[i].x, pts[i].y); tx.stroke();
+    }
+  }
+
+  size(); addEventListener("resize", size);
+  if (reduce) { drawWaves(0); }
+  else { (function loop(now) { drawWaves(now); drawTrail(now); requestAnimationFrame(loop); })(performance.now()); }
+
+  // Requests: saved to the build_requests table in Supabase.
+  // The publishable key is meant to be public; the table's rules only let visitors add requests
+  // and read the board, never contact details, statuses or deletes.
+  const API = "https://lzigsxqthaqzlanvygmm.supabase.co/rest/v1/build_requests";
+  const KEY = "sb_publishable_6vUOyKqJceEClfugBL2aWA_HjELExo0";
+  const headers = { apikey: KEY, Authorization: "Bearer " + KEY };
+  const KINDS = { app: "App", website: "Website", tool: "Tool", game: "Game", other: "Other" };
+  const STATUS = { new: "New", looking: "Looking at it", building: "Building", done: "Done" };
+  const list = document.getElementById("tickets"), count = document.getElementById("boardCount");
+
+  function ago(iso) {
+    const s = (Date.now() - new Date(iso)) / 1000;
+    if (s < 60) return "just now";
+    const m = s / 60, h = m / 60, d = h / 24;
+    if (m < 60) return Math.floor(m) + "m ago";
+    if (h < 24) return Math.floor(h) + "h ago";
+    if (d < 30) return Math.floor(d) + "d ago";
+    return new Date(iso).toLocaleDateString();
+  }
+  function render(rows) {
+    list.textContent = "";
+    count.textContent = rows.length ? rows.length + (rows.length === 1 ? " request" : " requests") : "";
+    if (!rows.length) {
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = "No requests yet. Be the first to send one.";
+      list.appendChild(li); return;
+    }
+    for (const r of rows) {
+      const li = document.createElement("li"); li.className = "ticket";
+      const top = document.createElement("div"); top.className = "ticket-top";
+      const kind = document.createElement("span"); kind.className = "label"; kind.textContent = KINDS[r.kind] || "Other";
+      const st = document.createElement("span"); st.className = "status " + (STATUS[r.status] ? r.status : "new"); st.textContent = STATUS[r.status] || "New";
+      top.append(kind, st);
+      const p = document.createElement("p"); p.textContent = r.idea;
+      const by = document.createElement("span"); by.className = "by"; by.textContent = (r.name || "Anonymous") + " · " + ago(r.created_at);
+      li.append(top, p, by); list.appendChild(li);
+    }
+  }
+  async function loadBoard() {
+    try {
+      const res = await fetch(API + "?select=id,created_at,kind,idea,name,status&order=created_at.desc&limit=100", { headers });
+      if (!res.ok) throw new Error(res.status);
+      render(await res.json());
+    } catch (e) {
+      list.textContent = "";
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = "The board couldn't load right now. Refresh to try again.";
+      list.appendChild(li);
+    }
+  }
+  loadBoard();
+
+  const form = document.getElementById("reqForm"), idea = document.getElementById("idea"), msg = document.getElementById("msg"),
+        btn = document.getElementById("sendBtn"), ideaCount = document.getElementById("ideaCount");
+  idea.addEventListener("input", () => { ideaCount.textContent = "At least 10 characters · " + idea.value.length + " / 1000"; });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    msg.className = "msg"; msg.textContent = "";
+    if (document.getElementById("website").value) return;
+    const text = idea.value.trim();
+    if (text.length < 10) { msg.className = "msg err"; msg.textContent = "Tell me a bit more: at least 10 characters."; idea.focus(); return; }
+    const body = {
+      kind: (form.querySelector("input[name=kind]:checked") || {}).value || "other",
+      idea: text,
+      name: document.getElementById("who").value.trim() || null,
+      contact: document.getElementById("contact").value.trim() || null
+    };
+    btn.disabled = true; btn.textContent = "Sending…";
+    try {
+      const res = await fetch(API, { method: "POST", headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(res.status);
+      form.reset(); ideaCount.textContent = "At least 10 characters · 0 / 1000";
+      msg.textContent = "Sent. It's on the board now.";
+      loadBoard();
+    } catch (err) {
+      msg.className = "msg err"; msg.textContent = "That didn't send. Check your connection and try again.";
+    } finally {
+      btn.disabled = false; btn.textContent = "Send request";
+    }
+  });
+
+  // Card tilt, like the Noiz card effect
+  if (fine && !reduce) document.querySelectorAll("[data-tilt]").forEach(card => {
+    card.addEventListener("pointermove", e => {
+      const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(1100px) rotateY(${px * 5}deg) rotateX(${-py * 5}deg)`;
+    });
+    card.addEventListener("pointerleave", () => { card.style.transform = ""; });
+  });
+})();
+</script>
+
+</body>
+</html>
