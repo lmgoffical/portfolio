@@ -4,23 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Apps and websites by @lmg, vibe coded and free. Send a request for something you want built.">
-</head>
-<body>
 <title>LMG Builds</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: matches noiz.bio/lmg as it is now. Pure black, light rays from the top, drifting line waves,
-   a ghost cursor trail, Comfortaa everywhere, soft white glow, and projects hung on a spine timeline.
-   Single dark theme on purpose. */
+/* Layout: one long scroll. A fixed 3D scene sits behind the page and the camera flies down a
+   wireframe corridor as you scroll: particle "lmg" -> one floating screen per project -> a red
+   bullseye behind the request form. Pure black, white glow, Comfortaa + mono labels.
+   Without WebGL (or with reduced motion) the same page shows as flat cards with pictures. */
 :root {
   --bg: #000000;
   --ink: #ffffff;
   --muted: #9b9b9b;
   --faint: #5c5c5c;
-  --card: rgba(14, 14, 14, .72);
+  --accent: #ffffff;
+  --card: rgba(8, 8, 8, .78);
   --line: rgba(255, 255, 255, .12);
   --line-2: rgba(255, 255, 255, .28);
   --glow: 0 0 8px rgba(255,255,255,.55), 0 0 22px rgba(255,255,255,.25);
@@ -31,67 +30,85 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { background: var(--bg); color: var(--ink); font: 400 16px/1.65 var(--round); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.65 var(--round); overflow-x: hidden; }
 .pad { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.wrap { max-width: 1020px; margin: 0 auto; }
+.wrap { max-width: 1120px; margin: 0 auto; }
 a { color: inherit; }
 img { display: block; height: auto; max-width: 100%; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 10px; }
 
-/* Backdrop: light rays from the top edge, line waves, ghost trail */
-.rays { position: fixed; inset: 0; z-index: -3; pointer-events: none; overflow: hidden; background: var(--bg); }
-.rays::before { content: ""; position: absolute; left: 50%; top: -30vh; width: 160vmax; height: 160vmax; transform: translateX(-50%);
-  background: repeating-conic-gradient(from 180deg at 50% 0%, rgba(255,255,255,.07) 0deg 2.2deg, transparent 2.2deg 7deg);
-  -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 55%); mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 55%);
-  animation: sway 14s ease-in-out infinite alternate; }
-.rays::after { content: ""; position: absolute; left: 50%; top: -40vh; width: 120vw; height: 90vh; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(255,255,255,.10), transparent); }
-@keyframes sway { from { transform: translateX(-50%) rotate(-4deg); } to { transform: translateX(-50%) rotate(4deg); } }
-#waves, #trail { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-#waves { z-index: -2; }
-#trail { z-index: 50; }
+/* 3D scene + overlays */
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: none; }
+.gl #scene { display: block; }
+.vignette { position: fixed; inset: 0; z-index: -1; pointer-events: none; display: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.6) 100%); }
+.gl .vignette { display: block; }
 
-/* Glow helpers */
+.loader { position: fixed; inset: 0; z-index: 100; background: #000; display: none; place-content: center; justify-items: center; gap: 14px; transition: opacity .6s, visibility .6s; }
+.gl .loader { display: grid; }
+.loader.gone { opacity: 0; visibility: hidden; }
+.loader span { font: 700 12px/1 var(--mono); letter-spacing: .3em; text-indent: .3em; }
+.loader .bar { width: 150px; height: 3px; background: rgba(255,255,255,.16); border-radius: 2px; overflow: hidden; }
+.loader .bar i { display: block; height: 100%; width: 0; background: #fff; box-shadow: 0 0 10px #fff; transition: width .25s; }
+
+/* Crosshair cursor (computers only). Links, buttons and fields keep the normal cursor. */
+.xh { cursor: none; }
+.xh a, .xh button, .xh label, .xh select { cursor: pointer; }
+.xh input, .xh textarea { cursor: text; }
+.cross { position: fixed; left: 0; top: 0; z-index: 90; width: 34px; height: 34px; margin: -17px 0 0 -17px; pointer-events: none; opacity: 0; transition: opacity .15s; will-change: transform; }
+.xh .cross.on { opacity: 1; }
+.cross i { position: absolute; background: var(--ink); box-shadow: 0 0 6px rgba(255,255,255,.8); transition: transform .12s; }
+.cross i:nth-child(1), .cross i:nth-child(2) { left: 16px; width: 2px; height: 9px; }
+.cross i:nth-child(1) { top: 0; } .cross i:nth-child(2) { bottom: 0; }
+.cross i:nth-child(3), .cross i:nth-child(4) { top: 16px; height: 2px; width: 9px; }
+.cross i:nth-child(3) { left: 0; } .cross i:nth-child(4) { right: 0; }
+.cross b { position: absolute; left: 15px; top: 15px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.cross.fire i:nth-child(1) { transform: translateY(-5px); } .cross.fire i:nth-child(2) { transform: translateY(5px); }
+.cross.fire i:nth-child(3) { transform: translateX(-5px); } .cross.fire i:nth-child(4) { transform: translateX(5px); }
+
+/* Helpers */
 .glow { text-shadow: var(--glow); }
 .label { font: 700 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.label.hot { color: var(--accent); text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 14px; font: 700 15px/1 var(--round); text-decoration: none; color: var(--ink);
-  background: rgba(10,10,10,.85); border: 1px solid var(--line-2); box-shadow: var(--glow-box); text-shadow: 0 0 8px rgba(255,255,255,.5); transition: transform .15s, box-shadow .2s; animation: pulse 3s ease-in-out infinite; }
+  background: rgba(10,10,10,.85); border: 1px solid var(--line-2); box-shadow: var(--glow-box); text-shadow: 0 0 8px rgba(255,255,255,.5); transition: transform .15s, box-shadow .2s; }
 .btn:hover { transform: translateY(-2px); box-shadow: 0 0 18px rgba(255,255,255,.55), 0 0 44px rgba(255,255,255,.2); }
 .btn-solid { background: var(--ink); color: #000; text-shadow: none; }
 .btn svg { width: 16px; height: 16px; }
-@keyframes pulse { 50% { box-shadow: 0 0 8px rgba(255,255,255,.2), 0 0 20px rgba(255,255,255,.06); } }
 
-/* Header */
-.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 22px; flex-wrap: wrap; }
+/* Header + HUD */
+.top { position: fixed; left: 0; right: 0; top: 0; z-index: 40; background: linear-gradient(#000 0%, rgba(0,0,0,.6) 60%, transparent); }
+.top .wrap { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 16px 22px; }
 .handle { font: 700 20px/1 var(--round); text-decoration: none; }
-.top nav { display: flex; gap: 8px; flex-wrap: wrap; }
-.chip { display: inline-flex; align-items: center; height: 38px; padding: 0 15px; border-radius: 999px; border: 1px solid var(--line-2); font: 600 13px/1 var(--round); text-decoration: none; background: rgba(0,0,0,.4); transition: box-shadow .2s; }
+.top nav { display: flex; gap: 8px; }
+.chip { display: inline-flex; align-items: center; height: 38px; padding: 0 15px; border-radius: 999px; border: 1px solid var(--line-2); font: 600 13px/1 var(--round); text-decoration: none; background: rgba(0,0,0,.5); transition: box-shadow .2s; white-space: nowrap; }
 .chip:hover { box-shadow: var(--glow-box); }
+.hud { position: fixed; z-index: 30; right: max(18px, env(safe-area-inset-right, 0px)); bottom: 18px; display: none; gap: 10px; justify-items: end; pointer-events: none; }
+.gl .hud { display: grid; }
+.hud .track { width: 120px; height: 2px; background: rgba(255,255,255,.16); }
+.hud .track i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 
-/* Hero: centered like the Noiz card */
-.hero { display: grid; justify-items: center; text-align: center; gap: 18px; padding-block: 56px 40px; }
-.hero h1 { font: 700 clamp(48px, 9vw, 96px)/1 var(--round); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
-.hero .sub { font: 600 16px/1 var(--round); color: #d9d9d9; }
-.hero .lede { max-width: 46ch; color: #bdbdbd; margin: 6px 0 8px; }
+/* Stages: one screen-height stop per thing */
+.stage { position: relative; min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding-block: 96px 64px; }
+.hero { justify-items: center; text-align: center; align-items: end; }
+.hero-in { display: grid; justify-items: center; gap: 16px; }
+.hero h1 { font: 700 clamp(40px, 7.4vw, 84px)/1 var(--round); letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.hero .lede { max-width: 46ch; color: #c9c9c9; margin: 0; }
 .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-.meta { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; color: var(--faint); font: 600 12px/1 var(--round); margin-top: 6px; }
+.meta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; color: var(--muted); font: 600 12px/1 var(--round); }
+.hint { display: none; margin-top: 6px; }
+.gl .hint { display: block; }
+.gl .hero .wordmark { display: none; }
+.wordmark { font: 700 clamp(72px, 16vw, 150px)/1 var(--round); }
 
-/* Spine timeline of projects */
-.sec-head { display: grid; gap: 10px; padding-block: 40px 28px; }
-.sec-head h2 { font: 700 clamp(36px, 6vw, 56px)/1 var(--round); margin: 0; letter-spacing: -.01em; }
-.spine { position: relative; display: grid; gap: 40px; padding-left: 44px; padding-bottom: 20px; }
-.spine::before { content: ""; position: absolute; left: 11px; top: 10px; bottom: 30px; width: 2px; background: var(--ink); box-shadow: var(--glow-box); opacity: .9; }
-.item { position: relative; display: grid; gap: 12px; }
-.item::before { content: ""; position: absolute; left: -44px; top: 2px; width: 24px; height: 24px; border-radius: 50%; background: #000; border: 2px solid var(--ink); box-shadow: var(--glow-box); }
-.item::after { content: ""; position: absolute; left: -37px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
-.item > .label { line-height: 28px; }
+.intro { min-height: 70vh; min-height: 70svh; justify-items: center; text-align: center; }
+.intro h2, .sec-head h2 { font: 700 clamp(44px, 9vw, 104px)/1 var(--round); margin: 10px 0 0; letter-spacing: -.02em; }
 
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; display: grid; grid-template-columns: 1fr 1.15fr;
-  transform-style: preserve-3d; transition: transform .25s ease-out, box-shadow .25s; will-change: transform; }
-.card:hover { box-shadow: 0 0 30px rgba(255,255,255,.08); }
-.card > * { min-width: 0; }
-.info { padding: 30px; display: grid; gap: 14px; align-content: center; }
-.info h3 { font: 700 clamp(26px, 3.4vw, 34px)/1.1 var(--round); margin: 0; }
-.info p { margin: 0; color: #c7c7c7; font-size: 15px; }
+.info { width: min(450px, 100%); padding: 28px; display: grid; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 22px;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 10%, transparent); }
+.stage[data-side="right"] .info { justify-self: end; }
+.info h3 { font: 700 clamp(28px, 3.6vw, 38px)/1.1 var(--round); margin: 0; }
+.info p { margin: 0; color: #cfcfcf; font-size: 15px; }
 .specs { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-block: 14px; border-block: 1px solid var(--line); }
 .specs div { display: grid; gap: 6px; }
 .specs dd { margin: 0; font: 700 17px/1.2 var(--round); }
@@ -99,39 +116,20 @@ img { display: block; height: auto; max-width: 100%; }
 .tags li { font: 600 12px/1 var(--round); padding: 8px 11px; border-radius: 999px; border: 1px solid var(--line); color: #dedede; }
 .links { display: flex; flex-wrap: wrap; gap: 10px; }
 .links .btn { min-height: 44px; padding: 10px 18px; font-size: 14px; }
-
-.media { position: relative; padding: 30px 30px 0; display: grid; align-items: end; }
-.shot { position: relative; border-radius: 14px 14px 0 0; overflow: hidden; border: 1px solid var(--line-2); border-bottom: 0; background: #0b0b0b; box-shadow: 0 0 30px rgba(255,255,255,.06); }
-.chrome { display: flex; gap: 6px; padding: 9px 12px; background: #121212; border-bottom: 1px solid var(--line); }
-.chrome b { width: 9px; height: 9px; border-radius: 50%; background: #3a3a3a; }
-.inset { position: absolute; width: 46%; right: 18px; top: 18px; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: 0 20px 40px -16px #000, 0 0 18px rgba(255,255,255,.08); }
-.bubble { position: absolute; width: 44%; left: 14px; bottom: 22px; filter: drop-shadow(0 18px 26px rgba(0,0,0,.85)); }
-
-.mini { grid-template-columns: 1fr 1fr; }
-.mini .media { padding: 30px; align-items: center; }
-.app { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(0,0,0,.6); font-size: 14px; }
-.app-bar { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); }
-.feed div { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); align-items: center; }
-.feed div:last-child { border-bottom: 0; }
-.feed em { font: 700 10px/1 var(--mono); letter-spacing: .1em; font-style: normal; text-transform: uppercase; color: var(--muted); padding: 5px 7px; border: 1px solid var(--line-2); border-radius: 6px; justify-self: start; }
-.disk { display: grid; gap: 12px; padding: 16px 14px 10px; font: 500 12px/1 var(--mono); }
-.disk div { display: grid; grid-template-columns: 90px 1fr 62px; gap: 12px; align-items: center; }
-.disk i { display: block; height: 7px; border-radius: 4px; background: var(--ink); box-shadow: 0 0 10px rgba(255,255,255,.5); }
-.disk span:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-.disk-note { padding: 0 14px 14px; }
-.pair { display: contents; }
+.flat { border-radius: 12px; border: 1px solid var(--line-2); }
+.gl .flat { display: none; }
 
 /* Requests */
+.sec-head { display: grid; gap: 10px; justify-items: center; text-align: center; padding-block: 30vh 40px; }
+.sec-head .hint-p { margin: 0; color: #ececec; max-width: 52ch; text-shadow: 0 1px 10px #000, 0 0 24px #000; }
 .req { display: grid; grid-template-columns: 1fr 1.1fr; gap: 22px; align-items: start; padding-bottom: 10px; }
 .req > * { min-width: 0; }
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; gap: 16px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; gap: 16px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .panel h3 { font: 700 22px/1.2 var(--round); margin: 0; }
-.panel .hint { margin: 0; color: var(--muted); font-size: 14px; }
 .field { display: grid; gap: 8px; }
 .field label { font: 700 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.field small { color: var(--faint); font-size: 12px; }
+.field small { color: var(--muted); font-size: 12px; }
 .kinds { display: flex; flex-wrap: wrap; gap: 8px; border: 0; margin: 0; padding: 0; }
-.kinds label { cursor: pointer; }
 .kinds input { position: absolute; opacity: 0; pointer-events: none; }
 fieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }
 .kinds span { text-transform: none; letter-spacing: 0; display: inline-block; font: 600 13px/1 var(--round); padding: 9px 13px; border-radius: 999px; border: 1px solid var(--line-2); color: #dcdcdc; transition: box-shadow .2s, background .2s; }
@@ -144,8 +142,7 @@ textarea.input { min-height: 120px; resize: vertical; }
 .row2 > * { min-width: 0; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .send { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.send .btn { cursor: pointer; }
-.send .btn[disabled] { opacity: .5; cursor: default; animation: none; }
+.send .btn[disabled] { opacity: .5; cursor: default; }
 .msg { font-size: 14px; color: #dcdcdc; }
 .msg.err { color: #ff9b9b; }
 .board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -153,14 +150,14 @@ textarea.input { min-height: 120px; resize: vertical; }
 .ticket { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; background: rgba(0,0,0,.45); }
 .ticket-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
 .ticket p { margin: 0; color: #e4e4e4; font-size: 14px; overflow-wrap: anywhere; }
-.ticket .by { color: var(--faint); font-size: 12px; }
+.ticket .by { color: var(--muted); font-size: 12px; }
 .status { font: 700 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--muted); }
 .status.looking { color: #fff; border-color: rgba(255,255,255,.5); }
 .status.building { color: #000; background: #fff; border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,.5); }
 .status.done { color: #000; background: #b8f5c8; border-color: #b8f5c8; }
 .status.declined { color: #ff9b9b; border-color: rgba(255,155,155,.5); }
 .empty { color: var(--muted); font-size: 14px; padding: 18px 4px; }
-.mini-btn { font: 700 12px/1 var(--round); color: var(--ink); background: rgba(0,0,0,.5); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.mini-btn { font: 700 12px/1 var(--round); color: var(--ink); background: rgba(0,0,0,.5); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 12px; }
 .mini-btn:hover { border-color: var(--ink); }
 .mini-btn.danger { color: #ff9b9b; border-color: rgba(255,155,155,.45); }
 .owner-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 14px; }
@@ -170,192 +167,157 @@ textarea.input { min-height: 120px; resize: vertical; }
 .tk-owner { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
 .tk-owner .contact { flex: 1 1 100%; color: #dcdcdc; font-size: 13px; overflow-wrap: anywhere; }
 .tk-owner select { font: 600 12px/1 var(--round); color: var(--ink); background: #000; border: 1px solid var(--line-2); border-radius: 10px; padding: 8px 10px; }
-.owner-link { background: none; border: 0; padding: 0; font: inherit; color: var(--faint); cursor: pointer; text-decoration: underline; }
+.owner-link { background: none; border: 0; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; }
 
-/* Ending */
 .end { display: grid; justify-items: center; text-align: center; gap: 16px; padding-block: 80px 40px; }
-.end h2 { font: 700 clamp(40px, 7vw, 72px)/1 var(--round); margin: 0; }
-.end p { margin: 0; color: #bdbdbd; max-width: 44ch; }
-.foot { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-block: 24px 40px; color: var(--faint); font-size: 13px; border-top: 1px solid var(--line); }
-.foot a { color: var(--muted); }
+.end p { margin: 0; color: #d0d0d0; max-width: 44ch; }
+.foot { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-block: 24px 40px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+.foot a { color: #c4c4c4; }
+
+/* Flat version (no WebGL / reduced motion): stages shrink to their content */
+html:not(.gl) .stage { min-height: 0; padding-block: 40px; }
+html:not(.gl) .hero { padding-top: 130px; }
+html:not(.gl) .info { width: min(640px, 100%); justify-self: center !important; }
+html:not(.gl) .sec-head { padding-top: 60px; }
 
 @media (max-width: 860px) {
-  .card { grid-template-columns: 1fr; }
-  .info { padding: 24px 20px; }
-  .media { padding: 0 20px; }
-  .mini .media { padding: 0 20px 20px; }
+  .gl .proj { align-items: end; padding-top: 47vh; padding-top: 47svh; padding-bottom: 40px; }
+  .info { padding: 22px 18px; justify-self: center !important; }
   .req { grid-template-columns: 1fr; }
   .panel { padding: 22px 18px; }
-  .spine { padding-left: 38px; }
-  .item::before { left: -38px; }
-  .item::after { left: -31px; }
+  .hud { display: none !important; }
 }
-@media (max-width: 460px) {
-  .specs dd { font-size: 15px; }
+@media (max-width: 560px) {
+  .chip.opt { display: none; }
+  .chip { padding: 0 12px; }
   .row2 { grid-template-columns: 1fr; }
-  .inset { width: 54%; right: 8px; top: 8px; }
-  .feed div { grid-template-columns: 74px 1fr; }
-  .disk div { grid-template-columns: 74px 1fr 52px; }
+  .specs dd { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .rays::before, .btn { animation: none; }
-  .card, .btn { transition: none; }
+  .btn { transition: none; }
 }
 </style>
+</head>
+<body>
 
-<div class="rays" aria-hidden="true"></div>
-<canvas id="waves" aria-hidden="true"></canvas>
-<canvas id="trail" aria-hidden="true"></canvas>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="loader" id="loader" aria-hidden="true"><span>LOADING</span><div class="bar"><i id="loadBar"></i></div></div>
+<div class="cross" id="cross" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
 
-<div class="pad">
+<header class="top pad">
   <div class="wrap">
-    <header class="top">
-      <a class="handle glow" href="#top">@lmg</a>
-      <nav aria-label="Links">
-        <a class="chip" href="#work">Projects</a>
-        <a class="chip" href="#request">Request</a>
-        <a class="chip" href="https://github.com/lmgoffical" target="_blank" rel="noopener">GitHub</a>
-        <a class="chip" href="https://noiz.bio/lmg" target="_blank" rel="noopener">noiz.bio/lmg</a>
-      </nav>
-    </header>
+    <a class="handle glow" href="#top">@lmg</a>
+    <nav aria-label="Links">
+      <a class="chip" href="#work">Projects</a>
+      <a class="chip" href="#request">Request</a>
+      <a class="chip" href="https://github.com/lmgoffical" target="_blank" rel="noopener">GitHub</a>
+      <a class="chip opt" href="https://noiz.bio/lmg" target="_blank" rel="noopener">noiz.bio/lmg</a>
+    </nav>
+  </div>
+</header>
 
-    <section class="hero" id="top">
-      <span class="label">Apps &amp; websites · vibe coded</span>
-      <h1 class="glow">stuff i make vibe coding</h1>
-      <span class="sub glow">@lmg</span>
-      <p class="lede">Windows apps and websites, for anyone. You bring the idea or I come up with one, I vibe code it, and it ships free.</p>
-      <div class="cta">
-        <a class="btn" href="#work">See my projects
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v10M3 8l5 5 5-5"/></svg></a>
-        <a class="btn" href="https://github.com/lmgoffical" target="_blank" rel="noopener">GitHub</a>
+<div class="hud" aria-hidden="true">
+  <span class="label hot" id="hudName">@lmg</span>
+  <span class="label" id="hudStep">01 / 06</span>
+  <div class="track"><i id="hudBar"></i></div>
+  <span class="label" id="hudHits">Hits 0</span>
+</div>
+
+<main class="pad">
+  <div class="wrap">
+    <section class="stage hero" id="top" data-station>
+      <div class="hero-in">
+        <span class="wordmark glow" aria-hidden="true">lmg</span>
+        <span class="label">Apps &amp; websites · vibe coded</span>
+        <h1 class="glow">stuff i make vibe coding</h1>
+        <p class="lede">Windows apps and websites, for anyone. You bring the idea or I come up with one, I vibe code it, and it ships free.</p>
+        <div class="cta">
+          <a class="btn btn-solid" href="#work">See my projects
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v10M3 8l5 5 5-5"/></svg></a>
+          <a class="btn" href="#request">Request a build</a>
+        </div>
+        <div class="meta"><span>4 projects</span><span>·</span><span>all free</span><span>·</span><span>Windows + web</span></div>
+        <span class="label hint">Warm up: shoot the targets · scroll to fly</span>
       </div>
-      <div class="meta"><span>4 projects</span><span>·</span><span>all free</span><span>·</span><span>Windows + web</span></div>
     </section>
 
-    <div class="sec-head" id="work">
-      <span class="label">Projects</span>
-      <h2 class="glow">the work</h2>
-    </div>
-
-    <div class="spine">
-      <!-- Aim Trainer -->
-      <div class="item">
-        <span class="label">No. 01 · Windows app + website</span>
-        <article class="card" data-tilt>
-          <div class="info">
-            <h3 class="glow">LMG's Aim Trainer</h3>
-            <p>An aim trainer that moves exactly like your game. Put in your Valorant, CS2 or Fortnite sens and every flick feels the same as in-game. A sens coach watches how you aim and tells you what to change.</p>
-            <dl class="specs">
-              <div><dt class="label">Games</dt><dd>7</dd></div>
-              <div><dt class="label">Modes</dt><dd>6</dd></div>
-              <div><dt class="label">Size</dt><dd>61 KB</dd></div>
-            </dl>
-            <ul class="tags"><li>Sens coach</li><li>Leaderboard</li><li>Live lyrics</li><li>Auto-updates</li><li>Play in browser</li></ul>
-            <div class="links">
-              <a class="btn btn-solid" href="https://lmgoffical.github.io/aim-trainer/" target="_blank" rel="noopener">Visit the site</a>
-              <a class="btn" href="https://lmgoffical.github.io/aim-trainer/play.html" target="_blank" rel="noopener">Play in browser</a>
-            </div>
-          </div>
-          <div class="media">
-            <div class="shot">
-              <div class="chrome"><b></b><b></b><b></b></div>
-              <img src="img/aim-home.jpg" alt="LMG's Aim Trainer website: Aim like it counts" width="1440" height="900" loading="lazy">
-            </div>
-            <img class="inset" src="img/aim-board.jpg" alt="The Aim Trainer leaderboard with filters for game, mode and difficulty" width="1440" height="900" loading="lazy">
-          </div>
-        </article>
+    <section class="stage intro" id="work">
+      <div>
+        <span class="label">Projects</span>
+        <h2 class="glow">the work</h2>
       </div>
+    </section>
 
-      <!-- Lyrics Player -->
-      <div class="item">
-        <span class="label">No. 02 · Windows app + website</span>
-        <article class="card" data-tilt>
-          <div class="info">
-            <h3 class="glow">Lyrics Player</h3>
-            <p>Synced Spotify lyrics in a small bubble that floats on top of CS2, Roblox, Valorant and everything else. Each line lights up the moment it's sung, and hotkeys work while you're in game.</p>
-            <dl class="specs">
-              <div><dt class="label">Size</dt><dd>28 MB</dd></div>
-              <div><dt class="label">Install</dt><dd>None</dd></div>
-              <div><dt class="label">Windows</dt><dd>10 &amp; 11</dd></div>
-            </dl>
-            <ul class="tags"><li>Floating bubble</li><li>Click-through</li><li>Fullscreen lyrics</li><li>Themes</li><li>Spotify search</li></ul>
-            <div class="links">
-              <a class="btn btn-solid" href="https://lmgoffical.github.io/lyrics-player/" target="_blank" rel="noopener">Visit the site</a>
-              <a class="btn" href="https://github.com/lmgoffical/lyrics-player" target="_blank" rel="noopener">GitHub</a>
-            </div>
-          </div>
-          <div class="media">
-            <div class="shot">
-              <div class="chrome"><b></b><b></b><b></b></div>
-              <img src="img/lyrics-home.jpg" alt="Lyrics Player website: Lyrics over every game" width="1440" height="900" loading="lazy">
-            </div>
-            <img class="bubble" src="img/bubble.webp" alt="The floating lyrics bubble that sits over games" width="480" height="200" loading="lazy">
-          </div>
-        </article>
-      </div>
-
-      <!-- Heads Up + Space Finder -->
-      <div class="pair">
-        <div class="item">
-          <span class="label">No. 03 · Windows app</span>
-          <article class="card mini" data-tilt>
-            <div class="info">
-              <h3 class="glow">Heads Up</h3>
-              <p>Your news in one window: top and local news, weather, CS2 patch notes, tech deals and Steam sales, and the topics you follow. It updates itself, so you only download it once.</p>
-              <ul class="tags"><li>Node.js</li><li>Self-updating</li><li>Deals</li></ul>
-              <div class="links">
-                <a class="btn btn-solid" href="https://github.com/lmgoffical/heads-up/releases/latest/download/HeadsUp.zip">Download</a>
-                <a class="btn" href="https://github.com/lmgoffical/heads-up" target="_blank" rel="noopener">GitHub</a>
-              </div>
-            </div>
-            <div class="media">
-              <div class="app" aria-hidden="true">
-                <div class="app-bar"><span class="label">Heads Up</span><span class="label">● Live</span></div>
-                <div class="feed">
-                  <div><em>CS2</em><span>Patch notes</span></div>
-                  <div><em>Esports</em><span>Today's matches</span></div>
-                  <div><em>Weather</em><span>Your forecast</span></div>
-                  <div><em>Deals</em><span>Steam sales and laptops</span></div>
-                </div>
-              </div>
-            </div>
-          </article>
+    <section class="stage proj" data-station data-side="left">
+      <article class="info">
+        <span class="label hot">No. 01 · Windows app + website</span>
+        <h3 class="glow">LMG's Aim Trainer</h3>
+        <img class="flat" src="img/aim-home.jpg" alt="LMG's Aim Trainer website: Aim like it counts" width="1440" height="900" loading="lazy">
+        <p>An aim trainer that moves exactly like your game. Put in your Valorant, CS2 or Fortnite sens and every flick feels the same as in-game. A sens coach watches how you aim and tells you what to change.</p>
+        <dl class="specs">
+          <div><dt class="label">Games</dt><dd>7</dd></div>
+          <div><dt class="label">Modes</dt><dd>6</dd></div>
+          <div><dt class="label">Size</dt><dd>61 KB</dd></div>
+        </dl>
+        <ul class="tags"><li>Sens coach</li><li>Leaderboard</li><li>Live lyrics</li><li>Auto-updates</li><li>Play in browser</li></ul>
+        <div class="links">
+          <a class="btn btn-solid" href="https://lmgoffical.github.io/aim-trainer/" target="_blank" rel="noopener">Visit the site</a>
+          <a class="btn" href="https://lmgoffical.github.io/aim-trainer/play.html" target="_blank" rel="noopener">Play in browser</a>
         </div>
+      </article>
+    </section>
 
-        <div class="item">
-          <span class="label">No. 04 · Windows app</span>
-          <article class="card mini" data-tilt>
-            <div class="info">
-              <h3 class="glow">Space Finder</h3>
-              <p>Shows which folders and files are eating your drive, so you know what to clear before the next game update. It only reads, so it never deletes anything.</p>
-              <ul class="tags"><li>C#</li><li>Read-only</li><li>No install</li></ul>
-              <div class="links">
-                <a class="btn btn-solid" href="https://github.com/lmgoffical/space-finder/releases/latest/download/SpaceFinder.exe">Download</a>
-                <a class="btn" href="https://github.com/lmgoffical/space-finder" target="_blank" rel="noopener">GitHub</a>
-              </div>
-            </div>
-            <div class="media">
-              <div class="app" aria-hidden="true">
-                <div class="app-bar"><span class="label">Space Finder</span><span class="label">C:\</span></div>
-                <div class="disk">
-                  <div><span>Steam</span><i style="width:94%"></i><span>412 GB</span></div>
-                  <div><span>Downloads</span><i style="width:40%"></i><span>96 GB</span></div>
-                  <div><span>Videos</span><i style="width:26%"></i><span>61 GB</span></div>
-                  <div><span>AppData</span><i style="width:15%"></i><span>33 GB</span></div>
-                </div>
-                <div class="disk-note label">Example drive</div>
-              </div>
-            </div>
-          </article>
+    <section class="stage proj" data-station data-side="right">
+      <article class="info">
+        <span class="label hot">No. 02 · Windows app + website</span>
+        <h3 class="glow">Lyrics Player</h3>
+        <img class="flat" src="img/lyrics-home.jpg" alt="Lyrics Player website: Lyrics over every game" width="1440" height="900" loading="lazy">
+        <p>Synced Spotify lyrics in a small bubble that floats on top of CS2, Roblox, Valorant and everything else. Each line lights up the moment it's sung, and hotkeys work while you're in game.</p>
+        <dl class="specs">
+          <div><dt class="label">Size</dt><dd>28 MB</dd></div>
+          <div><dt class="label">Install</dt><dd>None</dd></div>
+          <div><dt class="label">Windows</dt><dd>10 &amp; 11</dd></div>
+        </dl>
+        <ul class="tags"><li>Floating bubble</li><li>Click-through</li><li>Fullscreen lyrics</li><li>Themes</li><li>Spotify search</li></ul>
+        <div class="links">
+          <a class="btn btn-solid" href="https://lmgoffical.github.io/lyrics-player/" target="_blank" rel="noopener">Visit the site</a>
+          <a class="btn" href="https://github.com/lmgoffical/lyrics-player" target="_blank" rel="noopener">GitHub</a>
         </div>
-      </div>
-    </div>
+      </article>
+    </section>
 
-    <div class="sec-head" id="request">
-      <span class="label">Requests</span>
+    <section class="stage proj" data-station data-side="left">
+      <article class="info">
+        <span class="label hot">No. 03 · Windows app</span>
+        <h3 class="glow">Heads Up</h3>
+        <p>Your news in one window: top and local news, weather, CS2 patch notes, tech deals and Steam sales, and the topics you follow. It updates itself, so you only download it once.</p>
+        <ul class="tags"><li>Node.js</li><li>Self-updating</li><li>Deals</li></ul>
+        <div class="links">
+          <a class="btn btn-solid" href="https://github.com/lmgoffical/heads-up/releases/latest/download/HeadsUp.zip">Download</a>
+          <a class="btn" href="https://github.com/lmgoffical/heads-up" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="stage proj" data-station data-side="right">
+      <article class="info">
+        <span class="label hot">No. 04 · Windows app</span>
+        <h3 class="glow">Space Finder</h3>
+        <p>Shows which folders and files are eating your drive, so you know what to clear before the next game update. It only reads, so it never deletes anything.</p>
+        <ul class="tags"><li>C#</li><li>Read-only</li><li>No install</li></ul>
+        <div class="links">
+          <a class="btn btn-solid" href="https://github.com/lmgoffical/space-finder/releases/latest/download/SpaceFinder.exe">Download</a>
+          <a class="btn" href="https://github.com/lmgoffical/space-finder" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </article>
+    </section>
+
+    <div class="sec-head" id="request" data-station>
+      <span class="label hot">Requests</span>
       <h2 class="glow">got an idea?</h2>
-      <p class="hint" style="margin:0;color:var(--muted);max-width:52ch">Tell me what you want built: an app, a website, a tool, anything. Requests are private, only I see them, and I'll reach out if I build it. One open request per person at a time.</p>
+      <p class="hint-p">Tell me what you want built: an app, a website, a tool, anything. Requests are private, only I see them, and I'll reach out if I build it. One open request per person at a time.</p>
     </div>
 
     <section class="req">
@@ -424,58 +386,20 @@ textarea.input { min-height: 120px; resize: vertical; }
       <a href="https://github.com/lmgoffical" target="_blank" rel="noopener">github.com/lmgoffical</a>
     </footer>
   </div>
-</div>
+</main>
+
+<script>
+// Decide early whether the 3D scene runs, so the flat layout never flashes.
+(function () {
+  var ok = false;
+  try { var c = document.createElement("canvas"); ok = !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) {}
+  if (ok && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("gl");
+})();
+</script>
 
 <script>
 (function () {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const fine = matchMedia("(pointer: fine)").matches;
-
-  // Line waves: a few thin white lines drifting across the page, like the Noiz overlay
-  const wc = document.getElementById("waves"), wx = wc.getContext("2d");
-  let W = 0, H = 0, dpr = 1;
-  const lines = Array.from({ length: 7 }, (_, i) => ({
-    y: (i + 0.5) / 7, amp: 30 + Math.random() * 50, len: 0.6 + Math.random() * 0.9,
-    speed: 0.00008 + Math.random() * 0.00012, phase: Math.random() * 6.28, tilt: (Math.random() - 0.5) * 0.25,
-    alpha: 0.10 + Math.random() * 0.16
-  }));
-  function size() {
-    dpr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
-    for (const c of [wc, tc]) { c.width = W * dpr; c.height = H * dpr; c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0); }
-  }
-  function drawWaves(t) {
-    wx.clearRect(0, 0, W, H);
-    wx.lineWidth = 1;
-    for (const l of lines) {
-      wx.strokeStyle = `rgba(255,255,255,${l.alpha})`;
-      wx.beginPath();
-      for (let x = -20; x <= W + 20; x += 12) {
-        const k = x / W;
-        const y = l.y * H + Math.sin(k * 6.28 * l.len + l.phase + t * l.speed * 6.28) * l.amp + (k - 0.5) * l.tilt * H;
-        x === -20 ? wx.moveTo(x, y) : wx.lineTo(x, y);
-      }
-      wx.stroke();
-    }
-  }
-
-  // Ghost trail: a soft white streak behind the pointer on computers
-  const tc = document.getElementById("trail"), tx = tc.getContext("2d");
-  const pts = [];
-  if (fine && !reduce) addEventListener("pointermove", e => { pts.push({ x: e.clientX, y: e.clientY, t: performance.now() }); });
-  function drawTrail(now) {
-    tx.clearRect(0, 0, W, H);
-    while (pts.length && now - pts[0].t > 260) pts.shift();
-    for (let i = 1; i < pts.length; i++) {
-      const a = 1 - (now - pts[i].t) / 260;
-      tx.strokeStyle = `rgba(255,255,255,${a * 0.55})`; tx.lineWidth = 1 + a * 3; tx.lineCap = "round";
-      tx.shadowColor = "rgba(255,255,255,.8)"; tx.shadowBlur = 10 * a;
-      tx.beginPath(); tx.moveTo(pts[i - 1].x, pts[i - 1].y); tx.lineTo(pts[i].x, pts[i].y); tx.stroke();
-    }
-  }
-
-  size(); addEventListener("resize", size);
-  if (reduce) { drawWaves(0); }
-  else { (function loop(now) { drawWaves(now); drawTrail(now); requestAnimationFrame(loop); })(performance.now()); }
 
   // Requests: saved to the build_requests table in Supabase.
   // The publishable key is meant to be public; the table's rules only let visitors add requests,
@@ -640,16 +564,367 @@ textarea.input { min-height: 120px; resize: vertical; }
       btn.disabled = false; btn.textContent = "Send request";
     }
   });
-
-  // Card tilt, like the Noiz card effect
-  if (fine && !reduce) document.querySelectorAll("[data-tilt]").forEach(card => {
-    card.addEventListener("pointermove", e => {
-      const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
-      card.style.transform = `perspective(1100px) rotateY(${px * 5}deg) rotateX(${-py * 5}deg)`;
-    });
-    card.addEventListener("pointerleave", () => { card.style.transform = ""; });
-  });
 })();
+</script>
+
+<script type="module">
+// The 3D scene. If anything here fails, the page drops back to the flat layout.
+const root = document.documentElement;
+if (root.classList.contains("gl")) {
+  try { await start(); }
+  catch (err) { console.error(err); root.classList.remove("gl", "xh"); }
+}
+
+async function start() {
+  const THREE = await import("./vendor/three.module.min.js");
+  const canvas = document.getElementById("scene");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.FogExp2(0x000000, 0.013);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
+
+  const GAP = 90;                                   // distance between stops along the corridor
+  const STOPS = [
+    { name: "@lmg",          color: "#ffffff" },
+    { name: "Aim Trainer",   color: "#ff5a3c" },
+    { name: "Lyrics Player", color: "#1ed760" },
+    { name: "Heads Up",      color: "#ffb020" },
+    { name: "Space Finder",  color: "#4da3ff" },
+    { name: "Requests",      color: "#ff2a2a" }
+  ].map((s, i) => ({ ...s, z: -GAP * i, c: new THREE.Color(s.color) }));
+  const LAST = STOPS.length - 1;
+
+  // ---- loading ----
+  const loader = document.getElementById("loader"), loadBar = document.getElementById("loadBar");
+  const manager = new THREE.LoadingManager();
+  manager.onProgress = (_, done, total) => { loadBar.style.width = (done / total * 100) + "%"; };
+  const texLoader = new THREE.TextureLoader(manager);
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  function prep(t) { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso; return t; }
+  const loadTex = url => new Promise((res, rej) => texLoader.load(url, t => res(prep(t)), undefined, rej));
+  const fonts = document.fonts ? Promise.race([
+    Promise.all([document.fonts.load('700 100px "Comfortaa"'), document.fonts.load('700 20px "JetBrains Mono"')]),
+    new Promise(r => setTimeout(r, 2500))
+  ]).catch(() => {}) : Promise.resolve();
+  const [aimHome, aimBoard, lyricsHome, bubble] = await Promise.all([
+    loadTex("img/aim-home.jpg"), loadTex("img/aim-board.jpg"), loadTex("img/lyrics-home.jpg"), loadTex("img/bubble.webp"), fonts
+  ]);
+
+  // ---- corridor: a wireframe box you fly down ----
+  const HW = 30, HH = 16, Z0 = 110, Z1 = -GAP * LAST - 40;
+  const gridPts = [];
+  for (let x = -HW; x <= HW; x += 5) for (const y of [-HH, HH]) gridPts.push(x, y, Z0, x, y, Z1);
+  for (let y = -HH + 4; y < HH; y += 4) for (const x of [-HW, HW]) gridPts.push(x, y, Z0, x, y, Z1);
+  for (let z = Z0; z >= Z1; z -= 10) gridPts.push(-HW, -HH, z, HW, -HH, z, HW, -HH, z, HW, HH, z, HW, HH, z, -HW, HH, z, -HW, HH, z, -HW, -HH, z);
+  const gridGeo = new THREE.BufferGeometry();
+  gridGeo.setAttribute("position", new THREE.Float32BufferAttribute(gridPts, 3));
+  const gridMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 });
+  scene.add(new THREE.LineSegments(gridGeo, gridMat));
+
+  // dust floating in the corridor
+  const dustN = 3200, dustPos = new Float32Array(dustN * 3);
+  for (let i = 0; i < dustN; i++) {
+    dustPos[i * 3] = (Math.random() * 2 - 1) * HW; dustPos[i * 3 + 1] = (Math.random() * 2 - 1) * HH; dustPos[i * 3 + 2] = Z0 + Math.random() * (Z1 - Z0);
+  }
+  const dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+  const dustMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.14, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+  scene.add(new THREE.Points(dustGeo, dustMat));
+
+  // ---- "lmg" made of particles ----
+  const TEXT_W = 30;
+  const word = (() => {
+    const c = document.createElement("canvas"); c.width = 720; c.height = 260;
+    const x = c.getContext("2d");
+    x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle";
+    x.font = '700 230px "Comfortaa", ui-rounded, system-ui, sans-serif';
+    x.fillText("lmg", 360, 120);
+    const d = x.getImageData(0, 0, c.width, c.height).data, pts = [];
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (let py = 0; py < c.height; py += 3) for (let px = 0; px < c.width; px += 3) {
+      if (d[(py * c.width + px) * 4 + 3] > 128) { pts.push(px, py); minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); }
+    }
+    const s = TEXT_W / (maxX - minX), cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, n = pts.length / 2;
+    const pos = new Float32Array(n * 3), from = new Float32Array(n * 3), seed = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = (pts[i * 2] - cx) * s; pos[i * 3 + 1] = -(pts[i * 2 + 1] - cy) * s; pos[i * 3 + 2] = (Math.random() - 0.5) * 1.2;
+      from[i * 3] = (Math.random() * 2 - 1) * 60; from[i * 3 + 1] = (Math.random() * 2 - 1) * 34; from[i * 3 + 2] = -Math.random() * 120 + 30;
+      seed[i] = Math.random();
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("aFrom", new THREE.BufferAttribute(from, 3));
+    g.setAttribute("aSeed", new THREE.BufferAttribute(seed, 1));
+    const m = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uP: { value: 0 }, uTime: { value: 0 }, uSize: { value: 1 }, uMouse: { value: new THREE.Vector3(999, 999, 0) }, uColor: { value: new THREE.Color(0xffffff) } },
+      vertexShader: `
+        attribute vec3 aFrom; attribute float aSeed;
+        uniform float uP, uTime, uSize; uniform vec3 uMouse;
+        varying float vA;
+        void main() {
+          float p = clamp((uP - aSeed * 0.45) / 0.55, 0.0, 1.0);
+          p = p * p * (3.0 - 2.0 * p);
+          vec3 pos = mix(aFrom, position, p);
+          pos.xy += 0.1 * vec2(sin(uTime * 1.3 + aSeed * 40.0), cos(uTime * 1.1 + aSeed * 55.0));
+          vec2 dm = pos.xy - uMouse.xy; float dist = length(dm);
+          pos.xy += normalize(dm + 0.0001) * smoothstep(5.0, 0.0, dist) * 2.4 * p;
+          vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+          gl_Position = projectionMatrix * mv;
+          gl_PointSize = uSize * (0.7 + aSeed * 0.8) * 105.0 / -mv.z;
+          vA = 0.3 + 0.6 * p;
+        }`,
+      fragmentShader: `
+        uniform vec3 uColor; varying float vA;
+        void main() {
+          float d = length(gl_PointCoord - 0.5);
+          gl_FragColor = vec4(uColor, smoothstep(0.5, 0.08, d) * vA);
+        }`
+    });
+    const p = new THREE.Points(g, m); p.frustumCulled = false; scene.add(p);
+    return m;
+  })();
+
+  // ---- floating screens, one per project ----
+  const glowTex = (() => {
+    const c = document.createElement("canvas"); c.width = c.height = 256;
+    const x = c.getContext("2d"), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, "rgba(255,255,255,.9)"); g.addColorStop(0.5, "rgba(255,255,255,.25)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  })();
+  function pane(tex, w, h, opts = {}) {
+    const g = new THREE.Group();
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: !!opts.alpha }));
+    g.add(face);
+    if (!opts.alpha) {
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.6), new THREE.MeshBasicMaterial({ color: 0x141414 }));
+      bar.position.y = h / 2 + 0.3; g.add(bar);
+      for (let i = 0; i < 3; i++) {
+        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.11, 16), new THREE.MeshBasicMaterial({ color: 0x4a4a4a }));
+        dot.position.set(-w / 2 + 0.45 + i * 0.36, h / 2 + 0.3, 0.01); g.add(dot);
+      }
+      const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, h + 0.6)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
+      edge.position.y = 0.3; g.add(edge);
+    }
+    return g;
+  }
+  function mock(draw) {
+    const c = document.createElement("canvas"); c.width = 1440; c.height = 900;
+    const x = c.getContext("2d");
+    x.fillStyle = "#070707"; x.fillRect(0, 0, 1440, 900);
+    draw(x);
+    return prep(new THREE.CanvasTexture(c));
+  }
+  const MONO = '"JetBrains Mono", ui-monospace, Consolas, monospace', ROUND = '"Comfortaa", ui-rounded, system-ui, sans-serif';
+  const headsTex = mock(x => {
+    x.fillStyle = "#9b9b9b"; x.font = `700 30px ${MONO}`; x.fillText("HEADS UP", 80, 110); x.textAlign = "right"; x.fillText("● LIVE", 1360, 110); x.textAlign = "left";
+    [["CS2", "Patch notes"], ["ESPORTS", "Today's matches"], ["WEATHER", "Your forecast"], ["DEALS", "Steam sales and laptops"], ["TECH", "The topics you follow"]].forEach(([tag, text], i) => {
+      const y = 170 + i * 138;
+      x.strokeStyle = "rgba(255,255,255,.16)"; x.lineWidth = 2; x.beginPath(); x.moveTo(80, y); x.lineTo(1360, y); x.stroke();
+      x.strokeStyle = "rgba(255,255,255,.4)"; x.strokeRect(80, y + 42, 220, 56);
+      x.fillStyle = "#bdbdbd"; x.font = `700 26px ${MONO}`; x.fillText(tag, 100, y + 80);
+      x.fillStyle = "#fff"; x.font = `600 46px ${ROUND}`; x.fillText(text, 350, y + 86);
+    });
+  });
+  const spaceTex = mock(x => {
+    x.fillStyle = "#9b9b9b"; x.font = `700 30px ${MONO}`; x.fillText("SPACE FINDER", 80, 110); x.textAlign = "right"; x.fillText("C:\\", 1360, 110); x.textAlign = "left";
+    [["Steam", 0.94, "412 GB"], ["Downloads", 0.4, "96 GB"], ["Videos", 0.26, "61 GB"], ["AppData", 0.15, "33 GB"], ["Documents", 0.07, "14 GB"]].forEach(([n, f, s], i) => {
+      const y = 230 + i * 120;
+      x.fillStyle = "#fff"; x.font = `600 40px ${ROUND}`; x.fillText(n, 80, y + 14);
+      x.fillStyle = "rgba(255,255,255,.1)"; x.fillRect(380, y - 14, 760, 26);
+      x.shadowColor = "#fff"; x.shadowBlur = 24; x.fillStyle = "#fff"; x.fillRect(380, y - 14, 760 * f, 26); x.shadowBlur = 0;
+      x.fillStyle = "#9b9b9b"; x.font = `500 34px ${MONO}`; x.textAlign = "right"; x.fillText(s, 1360, y + 12); x.textAlign = "left";
+    });
+    x.fillStyle = "#5c5c5c"; x.font = `700 24px ${MONO}`; x.fillText("EXAMPLE DRIVE", 80, 830);
+  });
+
+  const SCREEN_W = 17;
+  const rigs = [];                                   // one group per project stop
+  function station(i, build) {
+    const g = new THREE.Group(); g.position.z = STOPS[i].z;
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(40, 28), new THREE.MeshBasicMaterial({ map: glowTex, color: STOPS[i].c, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.position.z = -1.5; g.add(glow);
+    const floats = build(g);
+    scene.add(g); rigs[i] = { g, floats, base: (i % 2 ? -1 : 1) * 0.2 };
+  }
+  station(1, g => {
+    g.add(pane(aimHome, 16, 10));
+    const b = pane(aimBoard, 8, 5); b.position.set(5.6, 3.4, 2.4); g.add(b); return [b];
+  });
+  station(2, g => {
+    g.add(pane(lyricsHome, 16, 10));
+    const b = pane(bubble, 7.2, 3, { alpha: true }); b.position.set(-5.4, -3.6, 2.6); g.add(b); return [b];
+  });
+  station(3, g => { g.add(pane(headsTex, 16, 10)); return []; });
+  station(4, g => { g.add(pane(spaceTex, 16, 10)); return []; });
+
+  // ---- the end: a giant bullseye ----
+  const bull = new THREE.Group(); bull.position.z = STOPS[LAST].z - 14; scene.add(bull);
+  const BULL_R = 13;
+  [[13, 11.2, 0.9], [9.6, 7.8, 0.55], [6.2, 4.4, 0.9], [2.8, 0, 1]].forEach(([o, i, a]) => {
+    const m = new THREE.Mesh(i ? new THREE.RingGeometry(i, o, 96) : new THREE.CircleGeometry(o, 64),
+      new THREE.MeshBasicMaterial({ color: STOPS[LAST].c, transparent: true, opacity: a * 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    bull.add(m);
+  });
+  const bullGlow = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshBasicMaterial({ map: glowTex, color: STOPS[LAST].c, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+  bullGlow.position.z = -2; bull.add(bullGlow);
+
+  // ---- targets you can shoot ----
+  const targets = [], hitMeshes = [];
+  const ringGeo = new THREE.RingGeometry(0.85, 1.15, 40), midGeo = new THREE.RingGeometry(0.35, 0.55, 32), dotGeo = new THREE.CircleGeometry(0.16, 20), hitGeo = new THREE.CircleGeometry(1.5, 20);
+  function place(t, hero) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    t.g.position.set(side * (9 + Math.random() * 17), (Math.random() * 2 - 1) * 11, hero ? -8 - Math.random() * 40 : -30 - Math.random() * (GAP * LAST - 40));
+    t.y = t.g.position.y; t.ph = Math.random() * 6.28; t.pop = 0; t.g.scale.setScalar(1); t.mat.opacity = 0.95; t.g.visible = true;
+  }
+  for (let i = 0; i < 24; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(ringGeo, mat), new THREE.Mesh(midGeo, mat), new THREE.Mesh(dotGeo, mat));
+    const hit = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ visible: false })); g.add(hit);
+    const t = { g, mat, hero: i < 7 }; hit.userData.t = t;
+    place(t, t.hero); scene.add(g); targets.push(t); hitMeshes.push(hit);
+  }
+  let hits = 0;
+  const hudHits = document.getElementById("hudHits"), cross = document.getElementById("cross");
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  addEventListener("pointerdown", e => {
+    if (e.button || e.target.closest("a,button,input,textarea,select,label,.info,.panel")) return;
+    cross.classList.add("fire"); setTimeout(() => cross.classList.remove("fire"), 120);
+    ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(hitMeshes.filter(m => !m.userData.t.pop), false)[0];
+    if (!hit) return;
+    hit.object.userData.t.pop = performance.now();
+    hudHits.textContent = "Hits " + (++hits);
+  });
+
+  // ---- pointer: crosshair + parallax ----
+  const fine = matchMedia("(pointer: fine)").matches;
+  let mx = 0, my = 0, smx = 0, smy = 0, hasMouse = false;
+  if (fine) {
+    root.classList.add("xh");
+    addEventListener("pointermove", e => {
+      mx = e.clientX / innerWidth * 2 - 1; my = e.clientY / innerHeight * 2 - 1; hasMouse = true;
+      cross.style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+      cross.classList.toggle("on", !e.target.closest("a,button,input,textarea,select,label"));
+    });
+    document.addEventListener("pointerleave", () => cross.classList.remove("on"));
+  }
+
+  // ---- camera keyframes: where the camera sits at each stop ----
+  const stationEls = [...document.querySelectorAll("[data-station]")];
+  let centers = [], keys = [], W = 0, H = 0, narrow = false;
+  function measure() {
+    W = innerWidth; H = innerHeight; narrow = W <= 860;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, narrow ? 1.5 : 2));
+    renderer.setSize(W, H, false);
+    camera.aspect = W / H; camera.fov = narrow ? 62 : 50; camera.updateProjectionMatrix();
+    word.uniforms.uSize.value = renderer.getPixelRatio() * (narrow ? 1.5 : 1) * H / 900;
+    const tan = Math.tan(camera.fov * Math.PI / 360);
+    // distance at which something `width` wide fills `frac` of the screen width, and the view size there
+    const fit = (width, frac) => { const d = width / (frac * 2 * tan * camera.aspect); return { d, vh: 2 * d * tan, vw: 2 * d * tan * camera.aspect }; };
+    keys = STOPS.map((s, i) => {
+      let f, x = 0, y = 0, turn = 0;
+      if (i === 0) { f = fit(TEXT_W, narrow ? 0.86 : 0.4); y = -f.vh * (narrow ? 0.2 : 0.22); }
+      else if (i === LAST) { f = fit(BULL_R * 2, narrow ? 1.5 : 0.62); f.d -= 14; }
+      else {
+        f = fit(SCREEN_W, narrow ? 0.9 : 0.42);
+        if (narrow) y = -f.vh * 0.25; else { x = (i % 2 ? -1 : 1) * f.vw * 0.2; turn = -x * 0.12; }
+      }
+      return { pos: new THREE.Vector3(x, y, s.z + f.d), look: new THREE.Vector3(x + turn, y, s.z) };
+    });
+    const top = scrollY;
+    centers = stationEls.map(el => { const r = el.getBoundingClientRect(); return r.top + top + r.height / 2; });
+  }
+  measure();
+  addEventListener("resize", measure);
+  new ResizeObserver(measure).observe(document.body);
+
+  function focusNow() {                               // 0..LAST, fractional between stops
+    const y = scrollY + H / 2;
+    if (y <= centers[0]) return 0;
+    for (let i = 0; i < LAST; i++) if (y < centers[i + 1]) return i + (y - centers[i]) / (centers[i + 1] - centers[i]);
+    return LAST;
+  }
+
+  // ---- frame loop ----
+  const hudName = document.getElementById("hudName"), hudStep = document.getElementById("hudStep"), hudBar = document.getElementById("hudBar");
+  const pos = new THREE.Vector3(), look = new THREE.Vector3(), accent = new THREE.Color(), bg = new THREE.Color(), tmp = new THREE.Color(), white = new THREE.Color(0xffffff);
+  const mouseRay = new THREE.Raycaster(), mouseHit = new THREE.Vector3(), zPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let f = focusNow(), intro = 0, introAt = 0, last = performance.now(), lastStep = -1, lastCss = "";
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const t = now / 1000;
+    f += (focusNow() - f) * (1 - Math.exp(-dt * 5));
+    smx += (mx - smx) * (1 - Math.exp(-dt * 4)); smy += (my - smy) * (1 - Math.exp(-dt * 4));
+    if (introAt) intro = Math.min(1, (now - introAt) / 2600);
+
+    const i = Math.min(LAST - 1, Math.floor(f)), fr = f - i, e = smooth(0.14, 0.86, fr), a = keys[i], b = keys[i + 1];
+    pos.lerpVectors(a.pos, b.pos, e); look.lerpVectors(a.look, b.look, e);
+    const mid = Math.sin(Math.PI * e);
+    pos.y += mid * 2.2 * (i % 2 ? -1 : 1);
+    camera.position.set(pos.x + smx * 1.1, pos.y - smy * 0.7, pos.z);
+    camera.lookAt(look);
+    camera.rotateZ(mid * 0.16 * (i % 2 ? 1 : -1));
+
+    accent.lerpColors(STOPS[i].c, STOPS[i + 1].c, e);
+    const flood = i + 1 === LAST ? e : 0;            // the last stop floods red
+    bg.copy(accent).multiplyScalar((i === 0 ? e : 1) * 0.04 + flood * 0.09);
+    scene.background.copy(bg); scene.fog.color.copy(bg);
+    gridMat.color.copy(tmp.lerpColors(white, accent, 0.75)); gridMat.opacity = 0.2 + flood * 0.25;
+    dustMat.color.copy(tmp.lerpColors(white, accent, 0.6));
+
+    word.uniforms.uTime.value = t;
+    word.uniforms.uP.value = Math.min(intro, 1 - smooth(0.12, 0.7, f));
+    if (hasMouse && f < 0.5) {
+      ndc.set(mx, -my); mouseRay.setFromCamera(ndc, camera);
+      if (mouseRay.ray.intersectPlane(zPlane, mouseHit)) word.uniforms.uMouse.value.copy(mouseHit);
+    } else word.uniforms.uMouse.value.set(999, 999, 0);
+
+    for (let k = 1; k < LAST; k++) {
+      const r = rigs[k];
+      r.g.rotation.y = r.base * (narrow ? 0.5 : 1) + smx * 0.07; r.g.rotation.x = smy * 0.04;
+      r.g.position.y = Math.sin(t * 0.7 + k) * 0.25;
+      r.floats.forEach((m, n) => { m.position.z = 2.5 + Math.sin(t * 1.1 + n + k) * 0.35; });
+    }
+    bull.rotation.z = t * 0.05;
+    bull.children.forEach((m, n) => { if (n < 4) m.scale.setScalar(1 + Math.sin(t * 1.4 - n * 0.7) * 0.025); });
+
+    for (const tg of targets) {
+      if (tg.pop) {
+        const p = (now - tg.pop) / 280;
+        if (p < 1) { tg.g.scale.setScalar(1 + p * 1.6); tg.mat.opacity = 0.95 * (1 - p); }
+        else { tg.g.visible = false; if (now - tg.pop > 1800) place(tg, tg.hero); }
+      } else {
+        tg.g.position.y = tg.y + Math.sin(t * 0.9 + tg.ph) * 0.8;
+        tg.mat.color.copy(tmp.lerpColors(white, accent, 0.5));
+      }
+    }
+
+    const step = Math.min(LAST, Math.round(f));
+    if (step !== lastStep) {
+      lastStep = step; hudName.textContent = STOPS[step].name;
+      hudStep.textContent = String(step + 1).padStart(2, "0") + " / " + String(LAST + 1).padStart(2, "0");
+    }
+    hudBar.style.width = (f / LAST * 100) + "%";
+    const css = "#" + accent.getHexString();
+    if (css !== lastCss) { lastCss = css; root.style.setProperty("--accent", css); }
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+
+  // reveal: drop the loader, then let the particles fly into place
+  loadBar.style.width = "100%";
+  setTimeout(() => { loader.classList.add("gone"); introAt = performance.now(); }, 450);
+}
 </script>
 
 </body>
